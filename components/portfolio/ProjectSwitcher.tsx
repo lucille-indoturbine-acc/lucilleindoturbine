@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import { PressLink, pressMotion } from '@/components/motion/Press';
 import { useAnnouncedCurrentWeek, announceCurrentWeek } from '@/components/layout/current-week-signal';
@@ -75,6 +76,33 @@ export default function ProjectSwitcher({
     setSeen(said);
     setGlow((g) => g + 1);
   }
+
+  // The card sits in the root layout, which the client router keeps across
+  // navigations: a project opened in another tab moved every page under it
+  // while the card went on naming the old one. So it asks which project is
+  // open on each navigation and when the tab comes back, and re-renders from
+  // the server the moment the answer differs. See app/api/projects/open.
+  const router = useRouter();
+  const pathname = usePathname();
+  const shownId = (projects.find((p) => p.isActive) ?? projects[0])?.id ?? null;
+  useEffect(() => {
+    let live = true;
+    const check = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetch('/api/projects/open', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: { id: string | null } | null) => {
+          if (live && j?.id && j.id !== shownId) router.refresh();
+        })
+        .catch(() => {});
+    };
+    check();
+    document.addEventListener('visibilitychange', check);
+    return () => {
+      live = false;
+      document.removeEventListener('visibilitychange', check);
+    };
+  }, [pathname, shownId, router]);
 
   const active = projects.find((p) => p.isActive) ?? projects[0];
   if (!active) return null;

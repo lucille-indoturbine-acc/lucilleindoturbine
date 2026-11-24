@@ -386,9 +386,7 @@ export default function OverallMap({
                 />
               )}
             </Expand>
-            <p className="mt-1.5 text-[12px] text-muted-foreground">
-              {reminder ? 'Press it again to close the list' : 'Press one to see which, and why'}
-            </p>
+            {!reminder && <p className="mt-1.5 text-[12px] text-muted-foreground">Press one to see which</p>}
           </div>
         )}
 
@@ -501,6 +499,7 @@ interface ReminderRow {
   id: string;
   tag: string | null;
   name: string;
+  from: string;
   lines: string[];
 }
 
@@ -510,11 +509,18 @@ interface ReminderRow {
  * worked out on the server (lib/forecast-view.ts) and only named here.
  */
 function reminderRows(kind: NonNullable<Reminder>, units: MapNode[], forecast: ForecastView | null): ReminderRow[] {
+  // Where the row sits, its last two headings: a name alone ("Server") does
+  // not say which part of the project it belongs to.
+  const from = (id: string) =>
+    trailOf(units, id)
+      .slice(-2)
+      .map((a) => splitCode(a.name).name)
+      .join(' › ');
   if (kind === 'slip') {
-    return (forecast?.slipping ?? []).map(({ leaf, line }) => ({ id: leaf.id, tag: leaf.code || null, name: splitCode(leaf.name).name, lines: [line] }));
+    return (forecast?.slipping ?? []).map(({ leaf, line }) => ({ id: leaf.id, tag: leaf.code || null, name: splitCode(leaf.name).name, from: from(leaf.id), lines: [line] }));
   }
   if (kind === 'check') {
-    return (forecast?.toCheck ?? []).map(({ leaf, reasons }) => ({ id: leaf.id, tag: leaf.code || null, name: splitCode(leaf.name).name, lines: reasons }));
+    return (forecast?.toCheck ?? []).map(({ leaf, reasons }) => ({ id: leaf.id, tag: leaf.code || null, name: splitCode(leaf.name).name, from: from(leaf.id), lines: reasons }));
   }
   const out: MapNode[] = [];
   const walk = (n: MapNode) => {
@@ -532,10 +538,11 @@ function reminderRows(kind: NonNullable<Reminder>, units: MapNode[], forecast: F
       id: n.id,
       tag,
       name,
+      from: from(n.id),
       lines: [
         kind === 'late'
-          ? `Plan ended W${n.finishWeek} · Done ${fmt1(n.actualPct)}% · ${weeks(n.lateBy ?? 0)} late`
-          : `Plan ends W${n.finishWeek} · Done ${fmt1(n.actualPct)}% · ${n.dueIn === 0 ? 'Ends this week' : `Ends in ${weeks(n.dueIn ?? 0)}`}`,
+          ? `${weeks(n.lateBy ?? 0)} late · ${fmt1(n.actualPct)}% done`
+          : `${n.dueIn === 0 ? 'Ends this week' : `Ends in ${weeks(n.dueIn ?? 0)}`} · ${fmt1(n.actualPct)}% done`,
       ],
     };
   });
@@ -568,10 +575,10 @@ function ReminderList({
   const n = rows.length;
   const one = n === 1;
   const title = {
-    late: `${n} ${one ? 'activity has' : 'activities have'} passed the plan and ${one ? 'is' : 'are'} not finished`,
-    soon: `${n} ${one ? 'activity ends' : 'activities end'} within 3 weeks and ${one ? 'is' : 'are'} not finished`,
-    slip: `${n} ${one ? 'activity' : 'activities'} will finish after the plan`,
-    check: `${n} ${one ? 'activity needs' : 'activities need'} a look`,
+    late: `${n} late`,
+    soon: `${n} ending within 3 weeks`,
+    slip: `${n} will finish after the plan`,
+    check: `${n} to check`,
   }[kind];
 
   return (
@@ -590,6 +597,7 @@ function ReminderList({
                   {r.tag && <CodeChip>{r.tag}</CodeChip>}
                   <span className="min-w-0 truncate text-[14px] font-medium text-foreground">{r.name}</span>
                 </span>
+                {r.from && <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">{r.from}</span>}
                 {r.lines.map((line) => (
                   <span key={line} className={cn('mt-0.5 block text-[12px] tabular-nums', tone.text)}>
                     {line}

@@ -95,7 +95,6 @@ export interface ForecastView {
 }
 
 const kindLabel = (id: string | null | undefined) => BUILT_IN_KINDS.find((k) => k.id === id)?.label ?? null;
-const fmt1 = (v: number) => v.toFixed(1);
 
 /** The day the plan's straight line reaches the end of a rung. */
 function rungPlanDate(rungs: Milestone[], rungId: string, planStart: string, planFinish: string): string {
@@ -223,20 +222,14 @@ export function buildForecastView(db: Database, week: number): ForecastView | nu
     if (c.kind === 'bulk-entry' || !leaves[c.leafId]) continue;
     if (c.kind === 'kind-vs-heading') {
       const currentLabel = kindLabel(c.current);
-      say(
-        c.leafId,
-        currentLabel
-          ? `Set as ${currentLabel}, but it sits under ${tidyName(c.heading)}`
-          : `No kind of work yet; it sits under ${tidyName(c.heading)}`
-      );
+      // Short on purpose (24 Nov 2026, "simple aja, info aja"): the list now
+      // shows the heading under the name, so the line need not repeat it.
+      say(c.leafId, currentLabel ? `Kind differs from ${tidyName(c.heading)}` : 'No kind of work yet');
     } else if (c.kind === 'ticked-early') {
       const first = ref(c.waiting[0].id);
-      say(
-        c.leafId,
-        `${c.rungLabel} ticked, but ${first.code} ${first.name} is at ${fmt1(c.waiting[0].pct)}%${c.waiting.length > 1 ? ` and ${c.waiting.length - 1} more` : ''}`
-      );
+      say(c.leafId, `${c.rungLabel} ticked before ${first.code} is done`);
     } else if (c.kind === 'needs-date') {
-      say(c.leafId, 'Sets the finish, and has no vendor, site or client date yet');
+      say(c.leafId, 'No vendor, site or client date');
     }
   }
 
@@ -248,7 +241,7 @@ export function buildForecastView(db: Database, week: number): ForecastView | nu
       const weeks = slips[i.id];
       const finishWeek = leaves[i.id].finishWeek;
       // The plan week is the forecast less the slip, so the line recomputes.
-      return { leaf: ref(i.id), weeks, line: `Plan ends W${finishWeek - weeks} · Forecast W${finishWeek} · ${weeksWord(weeks)} late` };
+      return { leaf: ref(i.id), weeks, line: `${weeksWord(weeks)} late · W${finishWeek - weeks} → W${finishWeek}` };
     })
     .sort((a, b) => b.weeks - a.weeks);
 

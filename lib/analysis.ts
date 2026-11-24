@@ -277,6 +277,8 @@ export interface Contribution {
   actualPct: number;
   /** Project percent this item adds to (+) or takes from (−) the deviation. */
   share: number;
+  /** Where it sits: its last two headings, 'Backend › Payment'. */
+  trail: string;
 }
 
 /**
@@ -293,6 +295,7 @@ export function contributions(roots: RollupNode[], deviationPct: number): Contri
     leaves.map((n) => (total > 0 ? (n.variance / total) * 100 : 0)),
     deviationPct
   );
+  const trails = trailIndex(roots);
   return leaves
     .map((n, i) => ({
       id: n.id,
@@ -301,6 +304,7 @@ export function contributions(roots: RollupNode[], deviationPct: number): Contri
       planPct: n.bobot > 0 ? (n.targetWF / n.bobot) * 100 : 0,
       actualPct: n.curProgressPct,
       share: shares[i],
+      trail: trails.get(n.id) ?? '',
     }))
     .filter((c) => c.share !== 0);
 }
@@ -428,8 +432,9 @@ function trailIndex(roots: RollupNode[]): Map<string, string> {
       node.children.forEach((c) => visit(c, next));
       return;
     }
-    // The outermost ancestor is the project itself, identical on every row.
-    out.set(node.id, trail.slice(1).slice(-2).join(' › '));
+    // A single root is the project itself, identical on every row; with
+    // several roots the top heading IS where the row comes from.
+    out.set(node.id, (roots.length === 1 ? trail.slice(1) : trail).slice(-2).join(' › '));
   };
   roots.forEach((r) => visit(r, []));
   return out;

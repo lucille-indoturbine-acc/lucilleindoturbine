@@ -190,7 +190,10 @@ export function ContributionList({ rows, limit = 3 }: { rows: Contribution[]; li
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2.5">
               <RowBadge code={c.wbsCode} />
-              <p className={cn('truncate', TYPE.row)}>{tidyName(c.deskripsi)}</p>
+              <div className="min-w-0">
+                <p className={cn('truncate', TYPE.row)}>{tidyName(c.deskripsi)}</p>
+                {c.trail && <p className="truncate text-[12px] text-muted-foreground">{tidyName(c.trail)}</p>}
+              </div>
             </div>
             <VerdictPill verdict={c.share < 0 ? 'behind' : 'ahead'}>
               {signed(c.share, fmtNum(c.share, 2))}

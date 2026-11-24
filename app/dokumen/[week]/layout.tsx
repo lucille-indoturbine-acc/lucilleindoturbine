@@ -27,6 +27,9 @@ export const metadata = { title: 'Document Control' };
  */
 export function generateStaticParams() {
   const weeks = new Set(getAllRegisterWeekNumbers());
+  // The committed seed holds no project (emptied 24 Nov 2026), so a deployment
+  // builds against no weeks at all; week 1 keeps the route buildable.
+  if (weeks.size === 0) weeks.add(1);
   return [...weeks].sort((a, b) => a - b).map((w) => ({ week: String(w) }));
 }
 

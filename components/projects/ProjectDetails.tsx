@@ -14,6 +14,7 @@ import { updateProjectFieldAction, type ProjectField } from '@/lib/project-actio
 import { FIELDS as ENERGY_FIELDS, fieldOf } from '@/lib/fields';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import DateField from '@/components/ui/DateField';
 import MoneyInput from '@/components/ui/MoneyInput';
 import NativeSelect from '@/components/ui/NativeSelect';
 import { Label } from '@/components/ui/label';
@@ -150,7 +151,8 @@ export default function ProjectDetails({ project }: { project: Project }) {
     focusField.current = null;
     el?.scrollIntoView({ block: 'center' });
     el?.focus();
-    el?.select();
+    // A date field's trigger is a <button>, which has no select().
+    if (typeof el?.select === 'function') el.select();
   }, [open]);
 
   const valueOf = (k: ProjectField): string => {
@@ -252,10 +254,21 @@ export default function ProjectDetails({ project }: { project: Project }) {
                             onCommit={(raw) => commit(f.key, raw)}
                             className="h-11 w-full rounded-md border bg-transparent px-3 py-1 text-base shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 md:text-sm"
                           />
+                        ) : f.type === 'date' ? (
+                          // The app's own calendar, not the browser's: Chrome's
+                          // starts on Sunday and iOS Safari draws no button.
+                          // Commits on pick; the value stays YYYY-MM-DD.
+                          <DateField
+                            id={`pd-${f.key}`}
+                            value={valueOf(f.key)}
+                            onChange={(v) => commit(f.key, v)}
+                            disabled={pending}
+                            className="h-11 w-full min-w-0 rounded-md border bg-transparent px-3 text-base shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 md:text-sm"
+                          />
                         ) : (
                           <Input
                             id={`pd-${f.key}`}
-                            type={f.type === 'date' ? 'date' : 'text'}
+                            type="text"
                             defaultValue={valueOf(f.key)}
                             disabled={pending}
                             maxLength={f.maxLength}
